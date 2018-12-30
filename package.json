@@ -2,8 +2,8 @@
   "name": "nsfw-yuri-bot",
   "version": "1.0.0",
   "engines": {
-	"node": "10.15.0"
-	},
+    "node": "10.15.0"
+  },
   "description": "A Twitter bot that tweets out SFW and NSFW yuri images every few minutes.",
   "main": "server.js",
   "scripts": {
@@ -13,7 +13,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "twit": "^2.2.11",
-    "danbooru": "^3.0.8"
-  }
+    "danbooru": "^3.0.8",
+    "twit": "^2.2.11"
+  },
+  "devDependencies": {}
 }
