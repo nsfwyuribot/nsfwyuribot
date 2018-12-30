@@ -33,9 +33,6 @@ function sleep(ms){
 function downloadImage(uri, filename, callback) {
 	
 	request.head(uri, function(err, res, body){
-		console.log('content-type:', res.headers['content-type']);
-		console.log('content-length:', res.headers['content-length']);
-
 		request(uri).pipe(fs.createWriteStream('R:/Program Files/nodejs/images/' + filename)).on('close', callback);
 	});
 };
@@ -95,6 +92,8 @@ function uploadImage(imageNum, ratings, source, artist) {
 // Stores a collection of post urls from Danbooru into an array based on specific tags
 async function getPosts() {
 	
+	console.log('\nFetching URLs from Danbooru...');
+	
 	// Variables
 	var posts = await booru.posts({tags: 'yuri -futa', limit: 100, page: 1});
 	var urls = [];
@@ -127,7 +126,7 @@ async function getPosts() {
 				artist.push(posts[i].tag_string_artist);
 				
 				// Download image
-				downloadImage(urls[currentURL].href, 'yuri' + currentURL + '.png', function(){console.log('done');});
+				downloadImage(urls[currentURL].href, 'yuri' + currentURL + '.png', function(){});
 				currentURL += 1;
 				
 		} else {
@@ -167,7 +166,6 @@ function postToTwitter(ratings, source, artist) {
 				
 				// Cycle through local downloaded files, deleting after each upload
 				if (imageNum < images.length) {
-					console.log(imageNum);
 					uploadImage(imageNum, ratings[imageNum], source[imageNum], artist[imageNum]);
 					imageNum = imageNum + 1;
 				}
