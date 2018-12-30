@@ -13,7 +13,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "googleapis": "^27.0.0",
     "twit": "^2.2.11",
     "danbooru": "^3.0.8"
   }
