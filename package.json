@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "engines": {
 	"node": "10.15.0"
-	}
+	},
   "description": "A Twitter bot that tweets out SFW and NSFW yuri images every few minutes.",
   "main": "server.js",
   "scripts": {
