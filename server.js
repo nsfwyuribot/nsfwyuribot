@@ -163,7 +163,7 @@ function postToTwitter(urls, ratings, source, artist) {
 			console.log('\nReached end of URLS. Restarting...');
 			getPosts();
 		}
-	}, 30000);		
+	}, 900000);		
 }
 
 
