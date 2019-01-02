@@ -5,8 +5,8 @@
 
 // MODULES
 var fs = require('fs'),
-	request = require('request'),
-	Danbooru = require('danbooru')
+	request = require('request').defaults({encoding:null}), // 'null' causes request to output buffer instead of string
+	Danbooru = require('danbooru'),
 	path = require('path'),
 	Twit = require('twit'),
 	config = require(path.join(__dirname, 'config.js'));
@@ -16,11 +16,14 @@ var fs = require('fs'),
 const T = new Twit(config);
 const booru = new Danbooru();
 	
+// VARIABLES
+var pageNum = 1; // Danbooru page number
+	
 	
 // FUNCTIONS
 
 // sleep()
-// Use in async functions to wait for time specified in ms
+// Used in async functions to wait for time specified in ms
 function sleep(ms){
     return new Promise(resolve=>{
         setTimeout(resolve,ms)
@@ -28,63 +31,60 @@ function sleep(ms){
 }
 
 
-// downloadImage()
-// Downloads images using URLs colletected in getPosts() function
-function downloadImage(uri, filename, callback) {
-	
-	request.head(uri, function(err, res, body){
-		request(uri).pipe(fs.createWriteStream('R:/Program Files/nodejs/images/' + filename)).on('close', callback);
-	});
-};
-
-
 // uploadImage()
 // Uploads image to Twitter and posts
-function uploadImage(imageNum, ratings, source, artist) {
+function uploadImage(url, ratings, source, artist) {
 	
-  console.log('\nOpening image...');
-  
-  // Get image path in local directory
-  var image_path = path.join(__dirname, '/images/yuri' + imageNum.toString() + '.png'),
-      b64content = fs.readFileSync(image_path, { encoding: 'base64' });
+	console.log('Uploading image...');
+	
+	request.get(url, function (error, response, body) {
+					if (!error && response.statusCode == 200) {
+						
+						// Encode data from URL into base64
+						var b64Data = Buffer.from(body).toString('base64');
 
-  console.log('Uploading image...');
+						// Upload image to Twitter
+						T.post('media/upload', {media_data: b64Data}, function (err, data, response) {
+							if (err){
+							  console.log('ERROR:');
+							  console.log(err);
+							}
+							else{
+							  console.log('Image uploaded!');
+							  console.log('Now tweeting it...');
 
-  // Upload image to Twitter
-  T.post('media/upload', { media_data: b64content }, function (err, data, response) {
-    if (err){
-      console.log('ERROR:');
-      console.log(err);
-    }
-    else{
-      console.log('Image uploaded!');
-      console.log('Now tweeting it...');
-
-	// Set tags based on rating (sfw or nsfw)
-	var tweet_tags = '#yuri #sexy';
-	if (ratings.indexOf('s') >= 0) {
-		tweet_tags = '#yuri #sfw #sexy';
-	} else {
-		tweet_tags = '#yuri #nsfw #sexy';
-	}
-	  
-	// Post tweet to timeline with appropriate info and tags 
-    T.post('statuses/update', {
-		status: 'Artist: ' + artist + '\nSource: ' + source + '\n' + tweet_tags,
-        media_ids: new Array(data.media_id_string)
-      },
-        function(err, data, response) {
-          if (err){
-            console.log('ERROR:');
-            console.log(err);
-          }
-          else{
-            console.log('Posted image successfully!');
-          }
-        }
-      );
-    }
-  });
+						// Set tags based on rating (sfw or nsfw)
+						var tweet_tags = '#yuri #sexy';
+						
+						if (ratings.indexOf('s') >= 0) {
+							tweet_tags = '#yuri #百合 #sfw #sexy';
+						} else {
+							tweet_tags = '#yuri #百合 #nsfw #sexy';
+						}
+						  
+						// Post tweet to timeline with appropriate info and tags 
+						T.post('statuses/update', {
+							status: 'Artist: ' + artist + '\nSource: ' + source + '\n' + tweet_tags,
+							media_ids: new Array(data.media_id_string)
+						  },
+							function(err, data, response) {
+							  if (err){
+								console.log('ERROR:');
+								console.log(err);
+							  } else {
+								console.log('Posted image successfully!');
+							  }
+							}
+						  );
+						}
+					  });		
+					} 
+					
+					// Error with request.get()
+					else {
+						console.log('Error posting to Twitter: ' + error);
+					}
+	});
 }
 
 
@@ -95,7 +95,7 @@ async function getPosts() {
 	console.log('\nFetching URLs from Danbooru...');
 	
 	// Variables
-	var posts = await booru.posts({tags: 'yuri -futa', limit: 100, page: 1});
+	var posts = await booru.posts({tags: 'yuri -futa', limit: 190, page: pageNum});
 	var urls = [];
 	var ratings = [];
 	var artist = [];
@@ -108,7 +108,9 @@ async function getPosts() {
 		// Check for bad tags
 		if (posts[i].tag_string_general.indexOf('genderswap') <0 &&		
 			posts[i].tag_string_general.indexOf('bowsette')   <0 &&
-			posts[i].tag_string_character.indexOf('bowsette') <0 &&			
+			posts[i].tag_string_character.indexOf('bowsette') <0 &&
+			posts[i].tag_string_general.indexOf('booette')    <0 &&
+			posts[i].tag_string_character.indexOf('booette')  <0 &&			
 			posts[i].tag_string_general.indexOf('1boy')       <0 && 
 			posts[i].tag_string_general.indexOf('multiple_boys') <0 &&			
 			posts[i].tag_string_general.indexOf('comic')      <0 &&
@@ -119,14 +121,13 @@ async function getPosts() {
 			posts[i].tag_string_general.indexOf('greyscale')  <0   ){
 				
 				// If no bad tags...
-				// Push url to array
-				urls.push(booru.url(posts[i].large_file_url));
+					
+				// Push image info to arrays
+				urls.push(posts[i].large_file_url);
 				ratings.push(posts[i].rating);
 				source.push(posts[i].source);
 				artist.push(posts[i].tag_string_artist);
-				
-				// Download image
-				downloadImage(urls[currentURL].href, 'yuri' + currentURL + '.png', function(){});
+					
 				currentURL += 1;
 				
 		} else {
@@ -134,50 +135,35 @@ async function getPosts() {
 		}
 	}
 	
-	// Log total # of valid URLs and then postToTwitter()
-	console.log('\n' + urls.length + ' urls were found!');	
-	await sleep(3000);
-	postToTwitter(ratings, source, artist);
+	// Log total # of valid URLs and then postToTwitter()	
+	await sleep(5000);
+	console.log('\n' + urls.length + ' urls were found!');
+	postToTwitter(urls, ratings, source, artist);
 }
 
 
 // postToTwitter()
 // Read image files from local directory, upload to Twitter, and post
-function postToTwitter(ratings, source, artist) {
-	
-	// Read image files from local directory
-	fs.readdir(__dirname + '/images', function(err, files) {
-	
-		if (err){
-			console.log(err);
-		} else {
+function postToTwitter(urls, ratings, source, artist) {
 			
-			// Variables
-			var images = [];  // Array to store images
-			var imageNum = 0; // Keeps track of which image we're on
+	// Variables
+	var imageNum = 0;
 			
-			// Push file names to images array
-			files.forEach(function(f) {
-				images.push(f);
-			});		
-
-			// Upload images to Twitter every 15 minutes
-			setInterval(function(){
+	// Upload images to Twitter every 15 minutes
+	setInterval(function(){
 				
-				// Cycle through local downloaded files, deleting after each upload
-				if (imageNum < images.length) {
-					uploadImage(imageNum, ratings[imageNum], source[imageNum], artist[imageNum]);
-					imageNum = imageNum + 1;
-				}
-				
-				// After local images are exhausted, get new posts from Danbooru
-				else if (imageNum >= images.length) {
-					console.log(imageNum);
-					getPosts();
-				}
-			}, 20000);	
+		// Cycle through local downloaded files, deleting after each upload
+		if (imageNum < urls.length) {
+			uploadImage(urls[imageNum], ratings[imageNum], source[imageNum], artist[imageNum]);
+			imageNum = imageNum + 1;
 		}
-	});
+				
+		// After local images are exhausted, get new posts from Danbooru
+		else if (imageNum >= urls.length) {
+			console.log('\nReached end of URLS. Restarting...');
+			getPosts();
+		}
+	}, 10000);		
 }
 
 
