@@ -17,8 +17,8 @@ const T = new Twit(config);
 const booru = new Danbooru();
 	
 // VARIABLES
-var pageNum = 1; // Danbooru page number
-	
+var pageNum = 1;     // Danbooru page number
+var loopCounter = 0; // Global counter used in setting page number to help prevent repeats
 	
 // FUNCTIONS
 
@@ -93,6 +93,15 @@ function uploadImage(url, ratings, source, artist) {
 async function getPosts() {
 	
 	console.log('\nFetching URLs from Danbooru...');
+	
+	//Set page number
+	if (loopCounter == 0) {
+		pageNum = 1;
+		loopCounter = 1;
+	} else if (loopCounter == 1) {
+		pageNum = 210;
+		loopCounter = 0;
+	}
 	
 	// Variables
 	var posts = await booru.posts({tags: 'yuri -futa', limit: 190, page: pageNum});
