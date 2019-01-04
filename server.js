@@ -18,7 +18,7 @@ const booru = new Danbooru();
 	
 // VARIABLES
 var pageNum = 1;     // Danbooru page number
-var loopCounter = 0; // Global counter used in setting page number to help prevent repeats
+var loopCounter = 1; // Global counter used in setting page number to help prevent repeats
 	
 // FUNCTIONS
 
